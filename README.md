@@ -1,0 +1,1 @@
+# MediMate: Proactive Wellness Agent via LLMs
