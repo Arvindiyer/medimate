@@ -8,6 +8,14 @@ engine = create_engine(DATABASE_URL, echo=False)
 
 # ── Models ────────────────────────────────────────────────────────────────────
 
+class User(SQLModel, table=True):
+    id:              Optional[int] = Field(default=None, primary_key=True)
+    name:            str
+    age:             Optional[int] = None
+    caregiver_email: Optional[str] = None
+    created_at:      str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
 class Medication(SQLModel, table=True):
     id:      Optional[int] = Field(default=None, primary_key=True)
     name:    str
@@ -18,11 +26,20 @@ class Medication(SQLModel, table=True):
 
 class ActivityLog(SQLModel, table=True):
     id:        Optional[int] = Field(default=None, primary_key=True)
-    type:      str              # "medicine" | "walk" | "exercise"
+    type:      str              # "medicine" | "walk" | "exercise" | "meal"
     med_id:    Optional[int] = None
     notes:     Optional[str] = None
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
     user_id:   str = "default"
+
+
+class NotificationLog(SQLModel, table=True):
+    id:        Optional[int] = Field(default=None, primary_key=True)
+    user_id:   str
+    alert_type: str             # "missed_med" | "inactivity" | "distress" | "daily_summary"
+    message:   str
+    sent_to:   str              # caregiver email
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -34,6 +51,23 @@ def init_db():
 def get_session():
     with Session(engine) as session:
         yield session
+
+
+# ── User helpers ──────────────────────────────────────────────────────────────
+
+def get_user(user_id: str) -> Optional[User]:
+    with Session(engine) as s:
+        return s.exec(select(User).where(User.id == int(user_id))).first()
+
+
+def get_user_by_name(name: str) -> Optional[User]:
+    with Session(engine) as s:
+        return s.exec(select(User).where(User.name == name)).first()
+
+
+def list_users() -> list[User]:
+    with Session(engine) as s:
+        return s.exec(select(User)).all()
 
 
 # ── Query helpers ─────────────────────────────────────────────────────────────
@@ -79,3 +113,24 @@ def get_overdue_meds(user_id: str = "default") -> list[dict]:
                     "time": t,
                 })
     return overdue
+
+
+def get_notification_history(user_id: str, limit: int = 10) -> list[NotificationLog]:
+    with Session(engine) as s:
+        return s.exec(
+            select(NotificationLog)
+            .where(NotificationLog.user_id == user_id)
+            .order_by(NotificationLog.timestamp.desc())
+        ).fetchmany(limit)
+
+
+def log_notification(user_id: str, alert_type: str, message: str, sent_to: str):
+    with Session(engine) as s:
+        entry = NotificationLog(
+            user_id=user_id,
+            alert_type=alert_type,
+            message=message,
+            sent_to=sent_to,
+        )
+        s.add(entry)
+        s.commit()

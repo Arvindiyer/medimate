@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="refresh" content="60" />
+  <title>MediMate — Caregiver Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .score-ring { stroke-dasharray: 251.2; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-teal-700 text-white px-6 py-4 shadow-md">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">MediMate</h1>
+        <p class="text-teal-200 text-sm">Caregiver Dashboard</p>
+      </div>
+      <div class="text-right">
+        <p class="text-sm text-teal-100">Auto-refreshes every 60s</p>
+        <p class="text-xs text-teal-300">{{ now }}</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Patient card -->
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex items-center gap-5">
+        <!-- Wellness score ring -->
+        <div class="relative flex-shrink-0">
+          <svg width="88" height="88" viewBox="0 0 88 88">
+            <circle cx="44" cy="44" r="40" fill="none" stroke="#e2e8f0" stroke-width="7"/>
+            <circle
+              cx="44" cy="44" r="40"
+              fill="none"
+              stroke="{% if wellness_score >= 70 %}#0d9488{% elif wellness_score >= 40 %}#f59e0b{% else %}#ef4444{% endif %}"
+              stroke-width="7"
+              stroke-dasharray="251.2"
+              stroke-dashoffset="{{ 251.2 - (wellness_score / 100 * 251.2) }}"
+              transform="rotate(-90 44 44)"
+              stroke-linecap="round"
+            />
+          </svg>
+          <div class="absolute inset-0 flex flex-col items-center justify-center">
+            <span class="text-xl font-bold text-slate-700">{{ wellness_score }}%</span>
+          </div>
+        </div>
+
+        <!-- Patient info -->
+        <div class="flex-1">
+          <h2 class="text-2xl font-bold text-slate-800">{{ patient_name }}</h2>
+          {% if patient_age %}<p class="text-slate-500 text-sm">Age {{ patient_age }}</p>{% endif %}
+          <div class="mt-2 flex flex-wrap gap-2">
+            <span class="text-xs px-3 py-1 rounded-full font-semibold
+              {% if wellness_score >= 70 %}bg-teal-100 text-teal-700
+              {% elif wellness_score >= 40 %}bg-amber-100 text-amber-700
+              {% else %}bg-red-100 text-red-700{% endif %}">
+              {% if wellness_score >= 70 %}✅ Good day
+              {% elif wellness_score >= 40 %}⚠️ Needs attention
+              {% else %}🚨 Check in now{% endif %}
+            </span>
+            <span class="text-xs px-3 py-1 rounded-full bg-slate-100 text-slate-600 font-medium">
+              Last seen: {{ last_seen }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats grid -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-3xl mb-1">💊</p>
+        <p class="text-2xl font-bold text-slate-700">{{ meds_taken }}/{{ meds_total }}</p>
+        <p class="text-xs text-slate-500 font-medium mt-1">Medications</p>
+        {% if meds_taken < meds_total %}
+          <p class="text-xs text-red-500 font-semibold mt-1">{{ meds_total - meds_taken }} missed</p>
+        {% else %}
+          <p class="text-xs text-teal-600 font-semibold mt-1">All taken ✓</p>
+        {% endif %}
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-3xl mb-1">🍽</p>
+        <p class="text-2xl font-bold text-slate-700">{{ meals_logged }}</p>
+        <p class="text-xs text-slate-500 font-medium mt-1">Meals Logged</p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-3xl mb-1">🚶</p>
+        <p class="text-2xl font-bold text-slate-700">{{ activity_count }}</p>
+        <p class="text-xs text-slate-500 font-medium mt-1">Activities</p>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-3xl mb-1">📊</p>
+        <p class="text-2xl font-bold text-slate-700">{{ total_logs }}</p>
+        <p class="text-xs text-slate-500 font-medium mt-1">Log Entries</p>
+      </div>
+    </section>
+
+    <!-- Medications list -->
+    {% if medications %}
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <h3 class="text-base font-bold text-slate-700 mb-4">Today's Medications</h3>
+      <div class="space-y-2">
+        {% for med in medications %}
+        <div class="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+          <div>
+            <span class="font-semibold text-slate-700">{{ med.name }}</span>
+            <span class="text-slate-400 text-sm ml-2">{{ med.dose }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-400 text-sm">{{ med.times }}</span>
+            {% if med.taken %}
+              <span class="text-xs px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full font-semibold">Taken ✓</span>
+            {% else %}
+              <span class="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded-full font-semibold">Missed</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Today's activity log -->
+    {% if today_logs %}
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <h3 class="text-base font-bold text-slate-700 mb-4">Today's Activity Log</h3>
+      <div class="space-y-2">
+        {% for log in today_logs %}
+        <div class="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+          <span class="text-lg">
+            {% if log.type == 'medicine' %}💊
+            {% elif log.type == 'meal' %}🍽
+            {% elif log.type == 'walk' %}🚶
+            {% elif log.type == 'exercise' %}🏃
+            {% else %}📝{% endif %}
+          </span>
+          <div class="flex-1">
+            <span class="font-medium text-slate-700 capitalize">{{ log.type }}</span>
+            {% if log.notes %}<span class="text-slate-500 text-sm ml-2">— {{ log.notes }}</span>{% endif %}
+          </div>
+          <span class="text-xs text-slate-400">{{ log.timestamp[11:16] }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% else %}
+    <section class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+      <p class="text-amber-700 font-semibold">⚠️ No activity logged today yet</p>
+      <p class="text-amber-600 text-sm mt-1">Consider calling {{ patient_name }} to check in.</p>
+    </section>
+    {% endif %}
+
+    <!-- Alert history -->
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-700">Recent Alerts</h3>
+        <form method="post" action="/notify/check?user_id={{ user_id }}">
+          <button type="submit"
+            class="text-xs px-3 py-1.5 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700 transition">
+            Run Check Now
+          </button>
+        </form>
+      </div>
+
+      {% if alerts %}
+      <div class="space-y-2">
+        {% for alert in alerts %}
+        <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
+          <span class="text-base mt-0.5">
+            {% if alert.alert_type == 'missed_med' %}⚠️
+            {% elif alert.alert_type == 'distress' %}🚨
+            {% elif alert.alert_type == 'inactivity' %}📋
+            {% else %}📊{% endif %}
+          </span>
+          <div class="flex-1">
+            <p class="text-sm text-slate-700">{{ alert.message }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">→ Sent to {{ alert.sent_to }}</p>
+          </div>
+          <span class="text-xs text-slate-400 flex-shrink-0">{{ alert.timestamp[5:16] }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-slate-400 text-sm text-center py-4">No alerts sent yet — all good! 🎉</p>
+      {% endif %}
+    </section>
+
+  </main>
+
+  <footer class="text-center text-xs text-slate-400 py-6">
+    MediMate Caregiver Dashboard · Powered by open source AI
+  </footer>
+
+</body>
+</html>

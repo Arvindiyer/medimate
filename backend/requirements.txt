@@ -2,4 +2,9 @@ fastapi
 uvicorn[standard]
 sqlmodel
 python-dotenv
+httpx
+jinja2
+python-multipart
+requests
+# Gemini fallback (optional — only needed if GEMINI_API_KEY is set in .env)
 google-genai
