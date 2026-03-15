@@ -29,6 +29,28 @@
 
   <main class="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
+    <!-- ⚠️ Distress alert banner — shown prominently when red alerts exist -->
+    {% set distress_alerts = alerts | selectattr("alert_type", "equalto", "distress") | list %}
+    {% if distress_alerts %}
+    <section class="bg-red-600 rounded-2xl shadow-lg p-5">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-2xl">🚨</span>
+        <div>
+          <h3 class="text-white font-bold text-lg">Urgent — Distress Detected</h3>
+          <p class="text-red-100 text-sm">{{ patient_name }} reported concerning symptoms. Please check in immediately.</p>
+        </div>
+      </div>
+      <div class="space-y-2">
+        {% for alert in distress_alerts %}
+        <div class="bg-red-700 rounded-xl px-4 py-3 flex items-start gap-3">
+          <span class="text-red-200 text-xs font-semibold flex-shrink-0 mt-0.5">{{ alert.timestamp[5:16] }}</span>
+          <p class="text-white text-sm flex-1">"{{ alert.message }}"</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
     <!-- Patient card -->
     <section class="bg-white rounded-2xl shadow-sm p-6">
       <div class="flex items-center gap-5">
@@ -176,17 +198,21 @@
       <div class="space-y-2">
         {% for alert in alerts %}
         <div class="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
-          <span class="text-base mt-0.5">
-            {% if alert.alert_type == 'missed_med' %}⚠️
-            {% elif alert.alert_type == 'distress' %}🚨
-            {% elif alert.alert_type == 'inactivity' %}📋
-            {% else %}📊{% endif %}
+          <span class="text-xs font-bold px-2 py-1 rounded-lg flex-shrink-0 mt-0.5
+            {% if alert.alert_type == 'distress' %}bg-red-100 text-red-700
+            {% elif alert.alert_type == 'missed_med' %}bg-amber-100 text-amber-700
+            {% elif alert.alert_type == 'inactivity' %}bg-slate-100 text-slate-600
+            {% else %}bg-teal-100 text-teal-700{% endif %}">
+            {% if alert.alert_type == 'distress' %}🚨 DISTRESS
+            {% elif alert.alert_type == 'missed_med' %}⚠️ MISSED MED
+            {% elif alert.alert_type == 'inactivity' %}📋 INACTIVE
+            {% else %}📊 SUMMARY{% endif %}
           </span>
           <div class="flex-1">
             <p class="text-sm text-slate-700">{{ alert.message }}</p>
-            <p class="text-xs text-slate-400 mt-0.5">→ Sent to {{ alert.sent_to }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">→ {{ alert.sent_to }}</p>
           </div>
-          <span class="text-xs text-slate-400 flex-shrink-0">{{ alert.timestamp[5:16] }}</span>
+          <span class="text-xs text-slate-400 flex-shrink-0 mt-1">{{ alert.timestamp[5:16] }}</span>
         </div>
         {% endfor %}
       </div>

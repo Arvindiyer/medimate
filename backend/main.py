@@ -33,6 +33,10 @@ WHISPER_URL = os.getenv("WHISPER_URL", "http://localhost:8001")
 
 db.init_db()
 
+# ── Server-side conversation memory (per user, resets on restart) ─────────────
+# Stores the last 10 turns so voice-to-chat transitions retain context.
+CHAT_HISTORY: dict[str, list[dict]] = {}
+
 
 # ── Request / response schemas ────────────────────────────────────────────────
 
@@ -213,18 +217,28 @@ def get_due_reminders(user_id: str = "default"):
 
 @app.post("/chat")
 def chat_endpoint(req: ChatRequest):
-    context  = _build_context(req.user_id)
+    user_id  = req.user_id
+    context  = _build_context(user_id)
     messages = [{"role": m.role, "content": m.content} for m in req.messages]
+
+    # Merge with server-side history when frontend sends only the last turn
+    # (happens for voice-triggered chat where full history isn't sent)
+    stored = CHAT_HISTORY.get(user_id, [])
+    if stored and len(messages) <= 2:
+        messages = stored + messages
 
     # Check last user message for distress
     last_msg = messages[-1]["content"] if messages else ""
     if llm.check_distress(last_msg):
-        _trigger_distress_alert(req.user_id, last_msg)
+        _trigger_distress_alert(user_id, last_msg)
 
     try:
         reply = llm.chat(messages, context)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    # Update rolling server-side history (keep last 10 messages)
+    CHAT_HISTORY[user_id] = (messages + [{"role": "assistant", "content": reply}])[-10:]
 
     return {"reply": reply}
 
@@ -419,16 +433,20 @@ def _detect_intent(text: str, user_id: str) -> tuple[str, dict]:
     if any(w in text_lower for w in ["ate", "eaten", "meal", "food", "breakfast", "lunch", "dinner", "snack"]):
         return "log_meal", {}
 
-    if any(w in text_lower for w in ["recommend", "suggest", "what", "should", "eat", "food", "recipe"]):
+    if any(w in text_lower for w in ["recipe", "recipes", "food suggestion", "what to eat", "what should i eat", "what can i eat", "recommend meal", "suggest meal", "food recommendation", "nutrition"]):
         return "chat_food", {}
 
     return "chat", {}
 
 
 def _trigger_distress_alert(user_id: str, message: str):
-    """Fire distress email if user has a caregiver configured."""
+    """Fire distress email and ALWAYS log to NotificationLog — dashboard shows it even with no SMTP."""
     user = db.get_user(user_id)
-    if user and user.caregiver_email:
-        sent = notifications.send_distress_alert(user.caregiver_email, user.name, message)
-        if sent:
-            db.log_notification(user_id, "distress", message[:200], user.caregiver_email)
+    if not user:
+        return
+    if user.caregiver_email:
+        notifications.send_distress_alert(user.caregiver_email, user.name, message)
+        sent_to = user.caregiver_email
+    else:
+        sent_to = "no-caregiver-configured"
+    db.log_notification(user_id, "distress", message[:200], sent_to)

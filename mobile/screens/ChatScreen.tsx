@@ -45,8 +45,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
     >
       <ScrollView
         ref={scroll}
@@ -111,7 +111,7 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   root:            { flex: 1, backgroundColor: C.s50 },
-  messages:        { padding: 16, paddingBottom: 16, flexGrow: 1 },
+  messages:        { padding: 16, paddingBottom: 8, flexGrow: 1 },
 
   row:             { flexDirection: 'row', marginBottom: 10, gap: 8 },
   rowUser:         { justifyContent: 'flex-end' },
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   bubbleText:      { fontSize: 15, lineHeight: 22, color: C.s700 },
   bubbleTextUser:  { color: C.white },
 
-  inputBar:        { flexDirection: 'row', padding: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 12, marginBottom: Platform.OS === 'ios' ? 80 : 62, borderTopWidth: 1, borderTopColor: C.s200, gap: 8, backgroundColor: C.white, alignItems: 'flex-end' },
+  inputBar:        { flexDirection: 'row', padding: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 12, marginBottom: Platform.OS === 'ios' ? 80 : 70, borderTopWidth: 1, borderTopColor: C.s200, gap: 8, backgroundColor: C.white, alignItems: 'flex-end' },
   input:           { flex: 1, borderWidth: 1, borderColor: C.s200, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, maxHeight: 100, color: C.s700, backgroundColor: C.s50 },
   sendBtn:         { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   sendTxt:         { color: C.white, fontWeight: '800', fontSize: 18 },

@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { getMedications, getTodayLogs, logActivity } from '../services/api';
-import { C, R } from '../theme';
+import { C } from '../theme';
 
 type TaskStatus = 'taken' | 'missed' | 'due' | 'upcoming';
 
@@ -162,7 +163,7 @@ export default function TimelineScreen() {
     }
   }, []);
 
-  useEffect(() => { build(); }, [build]);
+  useFocusEffect(useCallback(() => { build(); }, [build]));
   const onRefresh = () => { setRefreshing(true); build(); };
 
   const doLog = async (task: Task, note?: string) => {

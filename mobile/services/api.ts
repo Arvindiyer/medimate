@@ -16,6 +16,9 @@ export const createUser = (name: string, age?: number, caregiverEmail?: string) 
 export const listUsers = () =>
   api.get("/users");
 
+export const getUser = (userId: string) =>
+  api.get(`/users/${userId}`);
+
 export const updateUser = (userId: number, name: string, age?: number, caregiverEmail?: string) =>
   api.put(`/users/${userId}`, { name, age, caregiver_email: caregiverEmail });
 
